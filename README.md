@@ -11,7 +11,7 @@ Typically, our users would navigate to the pdf folder and upload their pdf. Then
 This custom gadget allows users to remain in the WYSIWYG while uploading and linking their pdf. It also greatly speeds up the process.
 
 ## Install
-
+ 
 - Follow typical [OU Gadget installation](https://support.omniupdate.com/learn-ou-campus/administration/setup/gadgets.html)
 - Change this variable: `var path = "/WebFiles/PDFs"` to your pdf folder
 - Change hidden div to your site specifics
