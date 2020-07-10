@@ -1,134 +1,265 @@
 <!DOCTYPE html>
 <html>
+  
+  <head>
+    <!-- This title is not used. -->
+    <title>Insert Document</title>
 
-<head>
-  <!-- This title is not used. -->
-  <title>Insert PDF</title>
+    <!-- Use Bootstrap to match the look of OU Campus. -->
+    <link rel="stylesheet" href="../lib/bootstrap.min.css" />
 
-  <!-- Use Bootstrap to match the look of OU Campus. -->
-  <link rel="stylesheet" href="../lib/bootstrap.min.css">
+    <style type="text/css">
+      body {
+        margin: 10px;
+        background-color: transparent;
+      }
+      #overwrite-warning {
+        width: 100%;
+        height: 100%;
+        background: rgb(0, 0, 0, 0.7);
+        position: absolute;
+        z-index: 1;
+        display: none;
+      }
+      .overwrite-container {
+        background: white;
+        margin: 20px;
+        padding: 20px;
+      }
+    </style>
 
-  <style type="text/css">
-    body {
-      margin: 10px;
-      background-color: transparent;
-    }
-  </style>
+    <!-- jQuery IS REQUIRED for gadgetlib.js to work. -->
+    <script type="text/javascript" src="../lib/jquery-2.1.3.min.js"></script>
 
-  <!-- jQuery IS REQUIRED for gadgetlib.js to work. -->
-  <script type="text/javascript" src="../lib/jquery-2.1.3.min.js"></script>
-
-  <!-- 
+    <!-- 
         gadgetlib.js is a library of basic functions that gadgets can use. It creates a global
         `gadget` object that has a few useful methods. (See comments in gadgetlib.js.)
     -->
-  <script type="text/javascript" src="../lib/gadgetlib.min.js"></script>
+    <script type="text/javascript" src="../lib/gadgetlib.min.js"></script>
 
-  <script type="text/javascript">
+    <script type="text/javascript">
+      $(document).ready(function () {
+        /* 
+                First, call `gadget.ready()` to make sure the gadget has obtained an API token
+                to use for making OU Campus API calls. If your gadget will not make any API calls,
+                you can dispense with this method. This asynchronous method returns a jQuery
+                Promise object.
+                
+                Then, call `gadget.fetch()` to get the gadget's config data from the system. This
+                method, which also returns a jQuery Promise object, uses the API, which is why it
+                needs to follow the call to `gadget.ready()`.
+                
+                If you don't need the config data, you don't need to call gadget.fetch().
+            */
 
-    $(document).ready(function () {
-      /* 
-          First, call `gadget.ready()` to make sure the gadget has obtained an API token
-          to use for making OU Campus API calls. If your gadget will not make any API calls,
-          you can dispense with this method. This asynchronous method returns a jQuery
-          Promise object.
-          
-          Then, call `gadget.fetch()` to get the gadget's config data from the system. This
-          method, which also returns a jQuery Promise object, uses the API, which is why it
-          needs to follow the call to `gadget.ready()`.
-          
-          If you don't need the config data, you don't need to call gadget.fetch().
-      */
+        gadget
+          .ready()
+          .then(gadget.fetch)
+          .then(function () {
+            var apihost = gadget.get("apihost");
+            var token = gadget.get("token");
+            var site = gadget.get("site");
+            var shouldUpload = true;
 
+            var fileName = "";
+            var webfiles = /* entered desired path for files as a string */;
+            var folderPath = "";
+            var fileExt = "";
+            var fullFilePath = "";
+            var patt = /\.[a-z]{3,4}$/;
 
-      gadget.ready().then(gadget.fetch).then(function () {
-        var apihost = gadget.get('apihost');
-        var token = gadget.get('token');
-        var site = gadget.get('site');
+            var overwriteWarning = document.getElementById("overwrite-warning");
+            var overwriteYes = document.getElementById("overwrite-yes");
+            var overwriteNo = document.getElementById("overwrite-no");
 
-        function uploadPDF() {
-          var status = document.getElementById("upload-status");
-          var fileName = document.getElementById("file-name").value;
-          var file = document.getElementById("form-file").files[0];
-          var data = new FormData();
-          var path = "/WebFiles/PDFs"
-          data.append(fileName, file);
-          status.innerHTML = "<div class='alert alert-secondary'><p>Just a sec, File Uploading...</p></div>"
-
-          $.ajax({
-            type: 'POST',
-            url: apihost + "/files/upload?site=" + site + "&path=" + path + "&authorization_token=" + token,
-            data: data,
-            processData: false,
-            contentType: false,
-            success: function insertIntoEditableRegion(data) {
-              status.innerHTML = "<div class='alert alert-success'><p>Oh Yeah!, File Uploaded</p></div>";
-              var pdfCode = "<a href='" + path + "/" + fileName + ".pdf'>" + fileName + "</a>";
-              gadget.oucInsertAtCursor(pdfCode);
-            },
-            error: function () {
-              status.innerHTML = "<div class='alert alert-warning'><p>Bummer!, File Not Uploaded</p></div>"
+            function checkFileName() {
+              var warning = document.getElementById("name-warning");
+              var pattern = /[^A-Z,a-z,\d,_,-]/;
+              if (pattern.test(this.value)) {
+                warning.innerHTML =
+                  "<div class='alert alert-warning'><p>Please use valid characters (alphabet, numbers, -, _)</p></div>";
+                shouldUpload = false;
+              } else {
+                warning.innerHTML = "";
+                shouldUpload = true;
+              }
             }
-          })
-        }
-        $("#insert-pdf-button").click(uploadPDF);
+            $("#file-name").keyup(checkFileName);
+
+            function uploadDocument() {
+              if (!shouldUpload) {
+                return;
+              }
+              fileName = document.getElementById("file-name").value;
+              fileExt = patt.exec(
+                document.getElementById("form-file").files[0].name
+              )[0];
+              fileExt === ".doc" || fileExt === ".docx"
+                ? (folderPath = "WordDocs")
+                : fileExt === ".xls" || fileExt === ".xlsx"
+                ? (folderPath = "Excel")
+                : fileExt === ".pdf"
+                ? (folderPath = "PDFs")
+                : fileExt === ".ppt" || fileExt === ".pptx"
+                ? (folderPath = "PPTs")
+                : folderPath;
+              fullFilePath = `${webfiles}/${folderPath}/${fileName}${fileExt}`;
+              $.ajax({
+                type: "GET",
+                url:
+                  apihost +
+                  "/files/published?site=" +
+                  site +
+                  "&path=" +
+                  fullFilePath,
+                dataType: "json",
+                success: function () {
+                  overwriteWarning.style.display = "block";
+                },
+                error: function () {
+                  finalUpload();
+                },
+              });
+            }
+
+            $("#overwrite-yes").click(function () {
+              finalUpload("overwrite");
+            });
+            $("#overwrite-no").click(function () {
+              overwriteWarning.style.display = "none";
+            });
+            $("#insert-document-button").click(uploadDocument);
+
+            function finalUpload(arg) {
+              overwriteWarning.style.display = "none";
+              var status = document.getElementById("upload-status");
+              var overwritePath = "";
+              arg === "overwrite"
+                ? (overwritePath = "&overwrite=true")
+                : (overwritePath = "");
+              var textName = document.getElementById("text-name").value;
+              var file = document.getElementById("form-file").files[0];
+              var data = new FormData();
+              data.append(fileName, file);
+              status.innerHTML =
+                "<div class='alert alert-secondary'><p>Just a sec, File Uploading...</p></div>";
+              $.ajax({
+                type: "POST",
+                url:
+                  apihost +
+                  "/files/upload?site=" +
+                  site +
+                  "&path=" +
+                  webfiles +
+                  "/" +
+                  folderPath +
+                  overwritePath +
+                  "&authorization_token=" +
+                  token,
+                data: data,
+                processData: false,
+                contentType: false,
+                success: function insertIntoEditableRegion(data) {
+                  status.innerHTML =
+                    "<div class='alert alert-success'><p>Oh Yeah!, File Uploaded</p></div>";
+                  var documentCode = `<a target='_blank' href='${fullFilePath}'>${textName}</a>`;
+                  gadget.oucInsertAtCursor(documentCode);
+                  document.getElementById("document-chooser").reset();
+                },
+                error: function () {
+                  status.innerHTML =
+                    "<div class='alert alert-warning'><p>Bummer!, File Not Uploaded</p></div>";
+                },
+              });
+            }
+          });
       });
 
-    });
-
-    $(gadget).on({
-      'expanded': function (evt) {
-        // This event is triggered when the user expands (makes visible) a sidebar gadget.
-        console.log('Gadget expanded.');
-      },
-      'collapsed': function (evt) {
-        // This event is triggered when the user collapses (hides) a sidebar gadget.
-        console.log('Gadget collapsed.');
-      },
-      'configuration': function (evt, config) {
-        // If the user changes the gadget's configuration through the configuration modal,
-        // the gadget will hear about it and get the new config in the data argument here.
-        console.log('New config:', config);
-      },
-      'notification': function (evt, notification) {
-        // If the gadget's config.xml contains a "notification" entry, any notifications
-        // of the specified type(s) generated by OU Campus will trigger 'notification'
-        // events that can be handled here.
-        console.log('Notification received:', notification);
-      }
-    });
-
-  </script>
-</head>
-
-<body>
-  <div id="main">
-    <form id="pdf-chooser" onsubmit="event.preventDefault()">
-      <div class="form-group">
-        <label for="file-name">Enter the pdf file name</label>
-        <input id="file-name" class="form-control" placeholder="filename" required />
-      </div>
-      <div class="form-group">
-        <input type="file" class="form-control-file" id="form-file" accept=".pdf" required />
-      </div>
-      <div class="form-group">
-        <button type="submit" id="insert-pdf-button" class="btn btn-primary">Insert at Cursor</button>
-      </div>
-      <div class="form-group">
+      $(gadget).on({
+        expanded: function (evt) {
+          // This event is triggered when the user expands (makes visible) a sidebar gadget.
+          console.log("Gadget expanded.");
+        },
+        collapsed: function (evt) {
+          // This event is triggered when the user collapses (hides) a sidebar gadget.
+          console.log("Gadget collapsed.");
+        },
+        configuration: function (evt, config) {
+          // If the user changes the gadget's configuration through the configuration modal,
+          // the gadget will hear about it and get the new config in the data argument here.
+          console.log("New config:", config);
+        },
+        notification: function (evt, notification) {
+          // If the gadget's config.xml contains a "notification" entry, any notifications
+          // of the specified type(s) generated by OU Campus will trigger 'notification'
+          // events that can be handled here.
+          console.log("Notification received:", notification);
+        },
+      });
+    </script>
+  </head>
+  <body>
+    <div id="main">
+      <form id="document-chooser" onsubmit="event.preventDefault()">
+        <div id="overwrite-warning">
+          <div class="overwrite-container">
+            <h6>
+              This file name already exists. Do you want to overwrite the file?
+              Only click yes, if you know the existing file.
+            </h6>
+            <button type="button" id="overwrite-yes" class="btn btn-danger">
+              Yes
+            </button>
+            <button type="button" id="overwrite-no" class="btn btn-secondary">
+              No
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="text-name">Text to display at cursor</label>
+          <input
+            id="text-name"
+            class="form-control"
+            placeholder="enter text here"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="file-name">Uploaded file name</label>
+          <input
+            id="file-name"
+            class="form-control"
+            placeholder="enter file name here"
+            required
+          />
+        </div>
+        <div id="name-warning"></div>
+        <div class="form-group">
+          <input
+            type="file"
+            class="form-control-file"
+            id="form-file"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <button
+            type="submit"
+            id="insert-document-button"
+            class="btn btn-primary"
+          >
+            Insert at Cursor
+          </button>
+        </div>
         <div id="upload-status"></div>
-      </div>
-    </form>
-  </div>
-  <!--
+      </form>
+    </div>
+    <!--
         The following hidden div is only needed if you'll be editing your gadget in
         OU Campus's source code editor. OU Campus automatically adds a DirectEdit link
         to HTML files that you edit in OU Campus. This div hides the DirectEdit link.
     -->
-  <div style="display:none">
-    <a id="de"
-      href="https://a.cms.omniupdate.com/10?skin=oucampus&amp;account=wcu&amp;site=wcu&amp;action=de&amp;path=/custom_gadgets/insert-pdf/index.html"
-      style="text-decoration:none;">Office of Web Services</a>
-  </div>
-</body>
-
+    <div style="display: none;"><!-- ouc:ob --><!-- /ouc:ob --></div>
+  </body>
 </html>
