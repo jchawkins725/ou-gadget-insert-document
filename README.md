@@ -23,5 +23,5 @@ This custom gadget allows users to remain in the WYSIWYG while uploading and pub
 
 ## Install
  
-- Follow [OU Gadget installation](https://support.omniupdate.com/learn-ou-campus/administration/setup/gadgets.html)
+- Follow [OU Gadget installation](https://support.omniupdate.com/learn-ou-campus/administration/setup/gadgets.html | width=350)
 - Change any variables to match your site specifics
