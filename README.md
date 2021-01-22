@@ -2,7 +2,7 @@
 
 A custom OmniUpdate gadget created to upload and publish documents from the WYSIWYG.
 
-![OU upload document gadget preview](https://www.wcu.edu/custom_gadgets/insert-document/insert-document-thumbnail.png)
+<img src="https://www.wcu.edu/custom_gadgets/insert-document/insert-document-thumbnail.png" alt="OU upload document gadget preview" width="350">
 
 ## Typical Workflow
 
@@ -23,5 +23,5 @@ This custom gadget allows users to remain in the WYSIWYG while uploading and pub
 
 ## Install
  
-- Follow [OU Gadget installation](https://support.omniupdate.com/learn-ou-campus/administration/setup/gadgets.html | width=350)
+- Follow [OU Gadget installation](https://support.omniupdate.com/learn-ou-campus/administration/setup/gadgets.html)
 - Change any variables to match your site specifics
