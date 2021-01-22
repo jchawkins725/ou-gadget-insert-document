@@ -1,17 +1,27 @@
-# OU-Gadget-Insert-Document
+# OU-Gadget-Upload-Document
 
-A custom OmniUpdate gadget created for our users.
+A custom OmniUpdate gadget created to upload and publish documents from the WYSIWYG.
 
-### Typical Workflow
+![OU upload document gadget preview](https://www.wcu.edu/custom_gadgets/insert-document/insert-document-thumbnail.png)
 
-Typically, our users would navigate to the files folder at site root and upload their document. Then, they would go to their page, into an editable region WYSIWYG, type in the link text, highlight text, and link that text to their uploaded pdf. This workflow caused problems for users who would upload into the wrong folder, and/or they were not comfortable outside of the WYSIWYG.
+## Typical Workflow
 
-### New Workflow
+Typically, our editors would navigate to the /files folder at the site root to upload and publish their documents. This is how we organize our site. Then, they would go to their page, into an editable region WYSIWYG, type in the link text, highlight text, and link that text to their document. This workflow caused problems for editors who would upload into the wrong folder, and/or they were not comfortable working in the root. In addition, with Binary Management, the document would not publish until the approval process, so editors could not see a preview of their document.
 
-This custom gadget allows users to remain in the WYSIWYG while uploading and linking their pdf. It also greatly speeds up the process.
+## New Workflow
+
+This custom gadget allows users to remain in the WYSIWYG while uploading and publishing their document.
+
+## Features
+
+- Allows editors to rename their file
+- Checks for file name validity
+- Searches for the default media folder to place file into that folder
+- Checks and allows for overwriting files
+- uploads and publishes file
+- displays dependency tag for that file
 
 ## Install
  
-- Follow typical [OU Gadget installation](https://support.omniupdate.com/learn-ou-campus/administration/setup/gadgets.html)
-- Change this variable: `var webfiles` in index.html to your desired folder
-- Change hidden div to your site specifics
+- Follow [OU Gadget installation](https://support.omniupdate.com/learn-ou-campus/administration/setup/gadgets.html)
+- Change any variables to match your site specifics

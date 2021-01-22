@@ -1,45 +1,66 @@
 <!DOCTYPE html>
 <html>
-
-  <head>
+<head>
     <!-- This title is not used. -->
-    <title>Insert Document</title>
-
+    <title>Upload Document</title> 
+    
     <!-- Use Bootstrap to match the look of OU Campus. -->
-    <link rel="stylesheet" href="../lib/bootstrap.min.css" />
-
+    <link rel="stylesheet" href="{{f:33998472}}">
+    
     <style type="text/css">
-      body {
-        margin: 10px;
-        background-color: transparent;
-      }
-      #overwrite-warning {
-        width: 100%;
-        height: 100%;
-        background: rgb(0, 0, 0, 0.7);
-        position: absolute;
-        z-index: 1;
-        display: none;
-      }
-      .overwrite-container {
-        background: white;
-        margin: 20px;
-        padding: 20px;
-      }
+        body {
+            margin: 10px;
+            background-color: transparent;
+        }
+		p {
+			margin-bottom: 0px;
+		}
+		.fa-times {
+			position: absolute;
+    		top: 4px;
+    		right: 4px;
+			z-index: 1;
+			cursor: pointer;
+		}
+		#upload-status, #dm-status {
+			position: relative;
+		}
+		#overwrite-warning {
+			width: 100%;
+			height: 200%;
+			background: rgb(0,0,0,.7);
+			position: absolute;
+			z-index: 2;
+			display: none;
+		}
+		.overwrite-container {
+			background: white;
+			margin: 20px;
+			padding: 20px;
+		}
+		label {
+			display: inline;
+		}
+		.instructions {
+			font-style: italic;
+			font-size: 12px;
+		}
     </style>
+        <script src="https://kit.fontawesome.com/dff9e66e1d.js" crossorigin="anonymous"></script>
 
     <!-- jQuery IS REQUIRED for gadgetlib.js to work. -->
     <script type="text/javascript" src="../lib/jquery-2.1.3.min.js"></script>
-
+    
     <!-- 
         gadgetlib.js is a library of basic functions that gadgets can use. It creates a global
         `gadget` object that has a few useful methods. (See comments in gadgetlib.js.)
     -->
     <script type="text/javascript" src="../lib/gadgetlib.min.js"></script>
-
+    
     <script type="text/javascript">
-      $(document).ready(function () {
-        /* 
+        
+        $(document).ready(function () {
+            /* 
                 First, call `gadget.ready()` to make sure the gadget has obtained an API token
                 to use for making OU Campus API calls. If your gadget will not make any API calls,
                 you can dispense with this method. This asynchronous method returns a jQuery
@@ -51,215 +72,242 @@
                 
                 If you don't need the config data, you don't need to call gadget.fetch().
             */
+		
+			
+            gadget.ready().then(gadget.fetch).then(function () {
+				var apihost = gadget.get('apihost');
+            	var token = gadget.get('token');
+				var site = gadget.get('site');
+				var validName = true;
 
-        gadget
-          .ready()
-          .then(gadget.fetch)
-          .then(function () {
-            var apihost = gadget.get("apihost");
-            var token = gadget.get("token");
-            var site = gadget.get("site");
-            var shouldUpload = true;
+				var fileName = "";
+				var fileFolder = "";
+				var folderPath = "";
+				var fileExt = "";
+				var fullFilePath = "";
+				var patt = /\.[a-z]{3,4}$/;
+				var status = document.getElementById('upload-status');
+				var dmstatus = document.getElementById('dm-status');
+				var statusContent = document.getElementById('upload-status-content');
+				var dmstatusContent = document.getElementById('dm-status-content');
 
-            var fileName = "";
-            /* var webfiles = entered desired path for files as a string */;
-            var folderPath = "";
-            var fileExt = "";
-            var fullFilePath = "";
-            var patt = /\.[a-z]{3,4}$/;
+				var overwriteWarning = document.getElementById('overwrite-warning');
+				var overwriteYes = document.getElementById("overwrite-yes");
+				var overwriteNo = document.getElementById("overwrite-no");
+				
+				function checkFileName () {
+					var warning = document.getElementById("name-warning");
+					var pattern = /[^A-Z,a-z,\d,_,-]/;
+					if (pattern.test(this.value)) {
+						warning.innerHTML = "<div class='alert alert-warning'><p>Please use valid characters (alphabet, numbers, -)</p></div>";
+						validName = false;
+					} else {
+						warning.innerHTML = "";
+						validName = true;
+					}
+				}
+				$("#file-name").keyup(checkFileName);
+				
+				function getFileFolder() {
+					gadget.oucGetCurrentFileInfo().then(function (data) {
+						const currentFileName = data.filename;
+						const currentPathName = data.stagingPath;
+						const currentFolder = currentPathName.split(currentFileName)[0];
+						$.ajax({
+							type: 'GET',
+							url: apihost + "/directories/settings?site=" + site + "&path=" + currentFolder + "&authorization_token=" + token,
+							dataType: 'json',
+						}).then(
+							function (payloadData) {
+								if (payloadData.variables.ox_ftp_media_root !== undefined) {
+									fileFolder = payloadData.variables.ox_ftp_media_root;
+								}
+								else {
+									fileFolder = payloadData.inherited_variables.ox_ftp_media_root;
+								}
+								status.style.display = "block";
+								statusContent.innerHTML = `<div class='alert alert-secondary'><p>Media Folder found: ${fileFolder}</p></div>`;
+								checkFileExists();
+							},
+							function () {
+								status.style.display = "block";
+								statusContent.innerHTML = `<div class='alert alert-warning'><p>Error, Media Folder not found. Try refreshing browser.</p></div>`;
+							}
+						)
+					});
+				}
 
-            var overwriteWarning = document.getElementById("overwrite-warning");
-            var overwriteYes = document.getElementById("overwrite-yes");
-            var overwriteNo = document.getElementById("overwrite-no");
+				function checkFileExists() {
+					if (!validName) {return;}
+					fileName = document.getElementById("file-name").value;
+					fileExt = patt.exec(document.getElementById("form-file").files[0].name)[0];
+					fullFilePath = `${fileFolder}/${fileName}${fileExt}`;
+					$.ajax({
+						type: 'GET',
+						url: apihost + "/files/published?site=" + site + "&path=" + fullFilePath + "&authorization_token=" + token,
+						dataType: 'json',
+					}).then(
+						function () {
+							overwriteWarning.style.display = "block";
+						},
+						function () {
+							upload();
+						}
+					)
+				}
 
-            function checkFileName() {
-              var warning = document.getElementById("name-warning");
-              var pattern = /[^A-Z,a-z,\d,_,-]/;
-              if (pattern.test(this.value)) {
-                warning.innerHTML =
-                  "<div class='alert alert-warning'><p>Please use valid characters (alphabet, numbers, -, _)</p></div>";
-                shouldUpload = false;
-              } else {
-                warning.innerHTML = "";
-                shouldUpload = true;
-              }
-            }
-            $("#file-name").keyup(checkFileName);
+				$("#overwrite-yes").click(function () {upload('overwrite')});
+				$("#overwrite-no").click(function () {overwriteWarning.style.display = "none"});
+				$("#insert-document-button").click(getFileFolder);
 
-            function uploadDocument() {
-              if (!shouldUpload) {
-                return;
-              }
-              fileName = document.getElementById("file-name").value;
-              fileExt = patt.exec(
-                document.getElementById("form-file").files[0].name
-              )[0];
-              fileExt === ".doc" || fileExt === ".docx"
-                ? (folderPath = "WordDocs")
-                : fileExt === ".xls" || fileExt === ".xlsx"
-                ? (folderPath = "Excel")
-                : fileExt === ".pdf"
-                ? (folderPath = "PDFs")
-                : fileExt === ".ppt" || fileExt === ".pptx"
-                ? (folderPath = "PPTs")
-                : folderPath;
-              fullFilePath = `${webfiles}/${folderPath}/${fileName}${fileExt}`;
-              $.ajax({
-                type: "GET",
-                url:
-                  apihost +
-                  "/files/published?site=" +
-                  site +
-                  "&path=" +
-                  fullFilePath,
-                dataType: "json",
-                success: function () {
-                  overwriteWarning.style.display = "block";
-                },
-                error: function () {
-                  finalUpload();
-                },
-              });
-            }
-
-            $("#overwrite-yes").click(function () {
-              finalUpload("overwrite");
+				function upload (arg) {
+					document.getElementById('upload-again').style.display = "none";
+					overwriteWarning.style.display = "none";
+					status.style.display = "block";
+					statusContent.innerHTML = "<div class='alert alert-secondary'><p>Just a sec, file uploading...</p></div>";
+					var overwritePath = "";
+					arg === "overwrite" ? overwritePath = "&overwrite=true" : overwritePath = "";
+					var file = document.getElementById("form-file").files[0];
+					var data = new FormData();
+					data.append(fileName, file);
+					$.ajax({
+						type: 'POST',
+						url: apihost + "/files/upload?site=" + site + "&path=" + fileFolder + overwritePath + "&authorization_token=" + token,
+						data: data,
+						processData: false,
+						contentType: false,
+					}).then(
+						function insertIntoEditableRegion (data) {
+							status.style.display = "block";
+							statusContent.innerHTML = `<div class='alert alert-success'><p>Oh Yeah! ${fileName}${fileExt} uploaded in ${fileFolder}</p></div>`;
+							setTimeout(function() {
+								publish();
+							}, 1000);						
+						},
+						function () {
+							status.style.display = "block";
+							statusContent.innerHTML = `<div class='alert alert-warning'><p>Bummer! ${fileName}${fileExt} not uploaded</p></div>`;
+							document.getElementById('upload-again').style.display = "block";
+						}
+					)
+				}
+				
+				function publish () {
+					document.getElementById('publish-again').style.display = "none";
+					dmstatus.style.display = "none";
+					document.getElementById('dt-again').style.display = "none";
+					$.ajax({
+						type: 'POST',
+						url: apihost + "/files/publish?site=" + site + "&path=" + fullFilePath + "&authorization_token=" + token,
+					}).then(
+						function () {
+							status.style.display = "block";
+							statusContent.innerHTML = `<div class='alert alert-success'><p>Sweet!, ${fileName}${fileExt} published in ${fileFolder}</p></div>`;
+							document.getElementById("document-chooser").reset();
+							getDependencyTag();
+						},
+						function () {
+							status.style.display = "block";
+							statusContent.innerHTML = `<div class='alert alert-warning'><p>Error, ${fileName}${fileExt} uploaded, but not published</p></div>`;
+							document.getElementById('publish-again').style.display = "block";
+						}
+					)
+				}
+				
+				function getDependencyTag () {
+					$.ajax({
+						type: 'GET',
+						url: apihost + "/files/info?site=" + site + "&path=" + fullFilePath + "&authorization_token=" + token,
+					}).then(
+						function (data) {
+							var dmTag = data.info.dm_tag;
+							dmstatus.style.display = "block";
+							dmstatusContent.innerHTML = `<div class='alert alert-info'><p>Copy this to insert document: ${dmTag}</p></div>`;
+						},
+						function () {
+							dmstatus.style.display = "block";
+							dmstatusContent.innerHTML = `<div class='alert alert-warning'><p>File published, but can't find Dependency Tag</p></div>`;
+							document.getElementById('dt-again').style.display = "block";
+						}
+					)
+				}
+				$("#upload-again").click(upload)
+				$("#publish-again").click(publish)
+				$("#dt-again").click(publish)
+				function removeStatus () {
+					this.parentNode.style.display = "none";
+				}
+				$(".fa-times").click(removeStatus);
             });
-            $("#overwrite-no").click(function () {
-              overwriteWarning.style.display = "none";
-            });
-            $("#insert-document-button").click(uploadDocument);
 
-            function finalUpload(arg) {
-              overwriteWarning.style.display = "none";
-              var status = document.getElementById("upload-status");
-              var overwritePath = "";
-              arg === "overwrite"
-                ? (overwritePath = "&overwrite=true")
-                : (overwritePath = "");
-              var textName = document.getElementById("text-name").value;
-              var file = document.getElementById("form-file").files[0];
-              var data = new FormData();
-              data.append(fileName, file);
-              status.innerHTML =
-                "<div class='alert alert-secondary'><p>Just a sec, File Uploading...</p></div>";
-              $.ajax({
-                type: "POST",
-                url:
-                  apihost +
-                  "/files/upload?site=" +
-                  site +
-                  "&path=" +
-                  webfiles +
-                  "/" +
-                  folderPath +
-                  overwritePath +
-                  "&authorization_token=" +
-                  token,
-                data: data,
-                processData: false,
-                contentType: false,
-                success: function insertIntoEditableRegion(data) {
-                  status.innerHTML =
-                    "<div class='alert alert-success'><p>Oh Yeah!, File Uploaded</p></div>";
-                  var documentCode = `<a target='_blank' href='${fullFilePath}'>${textName}</a>`;
-                  gadget.oucInsertAtCursor(documentCode);
-                  document.getElementById("document-chooser").reset();
-                },
-                error: function () {
-                  status.innerHTML =
-                    "<div class='alert alert-warning'><p>Bummer!, File Not Uploaded</p></div>";
-                },
-              });
+        });
+        
+        $(gadget).on({
+            'expanded': function (evt) {
+                // This event is triggered when the user expands (makes visible) a sidebar gadget.
+                console.log('Gadget expanded.');
+			},
+            'collapsed': function (evt) {
+                // This event is triggered when the user collapses (hides) a sidebar gadget.
+                console.log('Gadget collapsed.');
+            },
+            'configuration': function (evt, config) {
+                // If the user changes the gadget's configuration through the configuration modal,
+                // the gadget will hear about it and get the new config in the data argument here.
+                console.log('New config:', config);
+            },
+            'notification': function (evt, notification) {
+                // If the gadget's config.xml contains a "notification" entry, any notifications
+                // of the specified type(s) generated by OU Campus will trigger 'notification'
+                // events that can be handled here.
+                console.log('Notification received:', notification);
             }
-          });
-      });
-
-      $(gadget).on({
-        expanded: function (evt) {
-          // This event is triggered when the user expands (makes visible) a sidebar gadget.
-          console.log("Gadget expanded.");
-        },
-        collapsed: function (evt) {
-          // This event is triggered when the user collapses (hides) a sidebar gadget.
-          console.log("Gadget collapsed.");
-        },
-        configuration: function (evt, config) {
-          // If the user changes the gadget's configuration through the configuration modal,
-          // the gadget will hear about it and get the new config in the data argument here.
-          console.log("New config:", config);
-        },
-        notification: function (evt, notification) {
-          // If the gadget's config.xml contains a "notification" entry, any notifications
-          // of the specified type(s) generated by OU Campus will trigger 'notification'
-          // events that can be handled here.
-          console.log("Notification received:", notification);
-        },
-      });
+        });
+        
     </script>
-  </head>
-  <body>
+</head>
+<body>
     <div id="main">
-      <form id="document-chooser" onsubmit="event.preventDefault()">
-        <div id="overwrite-warning">
-          <div class="overwrite-container">
-            <h6>
-              This file name already exists. Do you want to overwrite the file?
-              Only click yes, if you know the existing file.
-            </h6>
-            <button type="button" id="overwrite-yes" class="btn btn-danger">
-              Yes
-            </button>
-            <button type="button" id="overwrite-no" class="btn btn-secondary">
-              No
-            </button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="text-name">Text to display at cursor</label>
-          <input
-            id="text-name"
-            class="form-control"
-            placeholder="enter text here"
-            required
-          />
-        </div>
-        <div class="form-group">
-          <label for="file-name">Uploaded file name</label>
-          <input
-            id="file-name"
-            class="form-control"
-            placeholder="enter file name here"
-            required
-          />
-        </div>
-        <div id="name-warning"></div>
-        <div class="form-group">
-          <input
-            type="file"
-            class="form-control-file"
-            id="form-file"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-            required
-          />
-        </div>
-        <div class="form-group">
-          <button
-            type="submit"
-            id="insert-document-button"
-            class="btn btn-primary"
-          >
-            Insert at Cursor
-          </button>
-        </div>
-        <div id="upload-status"></div>
-      </form>
+        <form id="document-chooser" onsubmit="event.preventDefault()">
+			<div id="overwrite-warning">
+				<div class="overwrite-container">
+					<h6>This file name already exists. Do you want to overwrite the file? Only click yes, if you know the existing file.</h6>
+					<button type="button" id="overwrite-yes" class="btn btn-danger">Yes</button>
+					<button type="button" id="overwrite-no" class="btn btn-secondary">No</button>
+				</div>
+			</div>
+			<div class="form-group">
+				<label for="file-name">Rename File</label>
+				<input id="file-name" class="form-control" required/>
+				<p class="instructions">enter without extension(.pdf, .docx, ect.)</p>
+			</div>
+			<div id="name-warning"></div>
+			<div class="form-group">
+				<input type="file" class="form-control-file" id="form-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" required/>
+			</div>
+			<div id="upload-status" style="display:none;">
+				<i class="fas fa-times"></i>
+				<div id="upload-status-content"></div>
+				<div class="form-group"><button type="button" class="btn btn-secondary" id="upload-again" style="display:none;">Try again to upload?</button></div>
+				<div class="form-group"><button type="button" class="btn btn-secondary" id="publish-again" style="display:none;">Try again to publish?</button></div>
+			</div>
+			<div id="dm-status" style="display:none;">
+				<i class="fas fa-times"></i>
+				<div id="dm-status-content"></div>
+				<div class="form-group"><button type="button" class="btn btn-secondary" id="dt-again" style="display:none;">Try again to get Dependency Tag?</button></div>
+			</div>
+			<div class="form-group">
+				<button type="submit" id="insert-document-button" class="btn btn-primary">Upload and Publish</button>
+			</div>
+		</form>
     </div>
     <!--
         The following hidden div is only needed if you'll be editing your gadget in
         OU Campus's source code editor. OU Campus automatically adds a DirectEdit link
         to HTML files that you edit in OU Campus. This div hides the DirectEdit link.
     -->
-    <div style="display: none;"><!-- ouc:ob --><!-- /ouc:ob --></div>
-  </body>
+    <div style="display:none">
+        <!-- ouc:ob --><!-- /ouc:ob -->
+    </div>
+</body>
 </html>
